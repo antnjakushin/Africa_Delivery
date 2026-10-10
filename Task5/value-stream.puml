@@ -1,0 +1,27 @@
+@startuml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+title Поток создания ценности Africa Delivery (Customer Order-to-Delivery Value Stream)
+
+Person(buyer, "Покупатель (Buyer)", "Поиск, выбор и оплата")
+Person(seller, "Мерчант (Seller)", "Сборка товара")
+Person(courier, "Курьер (Courier)", "Доставка и вручение")
+
+System_Boundary(val_stream, "Value Stream: Заказ -> Оплата -> Исполнение -> Вручение") {
+    Container(stage1, "1. Discovery & Search", "Capability: Каталог и Поиск", "Показ витрины (<1.8s), фильтрация по цене/наличию (Redis Cache)")
+    Container(stage2, "2. Checkout & Order Placement", "Capability: Процессинг заказов", "Валидация корзины, создание заказа с токенизацией PII")
+    Container(stage3, "3. Payment Authorization", "Capability: Платежи (Partner)", "STK Push через M-Pesa Daraja API или выбор Cash on Delivery")
+    Container(stage4, "4. Merchant Fulfillment", "Capability: Мерчант-операции", "Оповещение продавца по SMS, подтверждение сборки в Web")
+    Container(stage5, "5. Last-Mile Delivery", "Capability: Логистика (Partner)", "Маршрутизация водителю Boda-boda, трекинг статуса")
+    Container(stage6, "6. Confirmation & Settlement", "Capability: Финансы и Биллинг", "Вручение клиенту, закрытие заказа, начисление выплаты мерчанту")
+}
+
+Rel(buyer, stage1, "Открытие каталога")
+Rel(stage1, stage2, "Добавление в корзину")
+Rel(stage2, stage3, "Выбор оплаты")
+Rel(stage3, stage4, "Успешная транзакция")
+Rel(stage4, stage5, "Передача курьеру")
+Rel(stage5, stage6, "Вручение и COD")
+Rel(stage6, seller, "Выплата за вычетом комиссии")
+
+@enduml

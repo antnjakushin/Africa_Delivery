@@ -1,0 +1,56 @@
+@startuml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+LAYOUT_WITH_LEGEND()
+
+title C4 Container: Платформа Africa Delivery с географической привязкой
+
+Person(buyer, "Покупатель (Buyer)", "Покупатели в Нигерии, Кении, ЮАР")
+Person(seller, "Продавец (Seller)", "МСБ мерчанты")
+Person(courier, "Курьер (Courier)", "Службы доставки")
+
+Enterprise_Boundary(geo_edge, "Edge & Local PoP (Лагос / Найроби / Йоханнесбург)") {
+    Container(cdn, "CloudFront Edge CDN", "AWS PoP / Cloudflare", "Раздача WebP картинок, кэш статики PWA, SSL Termination")
+    Container(waf, "AWS WAF / DDoS Guard", "Security Layer", "Фильтрация ботов, Rate Limiting, защита от атак")
+}
+
+Enterprise_Boundary(geo_nigeria, "Локальный контур Нигерии (Lagos / NDPR Sovereign)") {
+    ContainerDb(pii_vault_ng, "Nigeria PII Token Vault", "Docker / PostgreSQL (MainOne VPS)", "Изолированное хранилище персональных данных граждан Нигерии (AES-256)")
+}
+
+Enterprise_Boundary(geo_capetown, "Основной регион AWS Cape Town (af-south-1)") {
+    Container(alb, "Application Load Balancer", "AWS ALB Multi-AZ", "Маршрутизация входящего трафика")
+    
+    Container_Boundary(modular_app, "Модульный монолит Africa Delivery (ECS Fargate)") {
+        Container(mod_catalog, "Catalog Module", "Go Service", "Дерево категорий, поиск, фильтры")
+        Container(mod_order, "Order Processing", "Go Service", "Стейт-машина заказов (псевдонимизированная)")
+        Container(mod_payment, "Payment Engine", "Go Service", "Оркестрация платежей M-Pesa / Cards / COD")
+        Container(mod_notify, "Notification Dispatcher", "Go Service", "Отправка SMS/Push через Africa's Talking")
+        Container(mod_token_gw, "PII Token Gateway", "Go Client", "Клиент детокенизации персональных данных")
+    }
+    
+    ContainerDb(db_master, "Primary Database", "AWS RDS PostgreSQL Multi-AZ", "Транзакции заказов, каталог, биллинг (только UUID)")
+    ContainerDb(db_replica, "Read Replica DB", "AWS RDS PostgreSQL", "Аналитические запросы и витрина")
+    ContainerDb(redis_cache, "Redis Cache Cluster", "AWS ElastiCache", "Кэширование каталога и сессий пользователей")
+}
+
+System_Ext(mpesa, "M-Pesa API", "Safaricom Gateway")
+System_Ext(sms_gw, "Africa's Talking", "SMS / USSD Gateway")
+
+Rel(buyer, cdn, "Запросы к витрине и каталогу", "HTTPS")
+Rel(seller, cdn, "Управление товарами", "HTTPS")
+Rel(courier, cdn, "Обновление статусов заказов", "HTTPS")
+
+Rel(cdn, waf, "Проксирование динамических запросов", "HTTPS")
+Rel(waf, alb, "Очищенный трафик", "HTTPS")
+Rel(alb, modular_app, "Маршрутизация", "HTTP")
+
+Rel(mod_catalog, redis_cache, "Чтение кэша каталога", "TCP / RESP")
+Rel(mod_catalog, db_replica, "Чтение при промахе кэша", "SQL / ReadOnly")
+Rel(mod_order, db_master, "Создание и обновление заказа", "SQL / ACID")
+Rel(mod_payment, mpesa, "Инициация платежа STK Push", "REST API")
+Rel(mod_notify, sms_gw, "Отправка SMS", "REST API")
+
+Rel(mod_token_gw, pii_vault_ng, "Детокенизация данных доставки (по требованию NDPR)", "mTLS / gRPC")
+
+@enduml

@@ -1,0 +1,38 @@
+@startuml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+title Архитектура наблюдаемости и сбора телеметрии Africa Delivery
+
+System_Boundary(app_scope, "Прикладной контур Africa Delivery") {
+    Container(pwa, "Client App (PWA / Mobile)", "JavaScript / Sentry SDK", "RUM метрики, клиентские ошибки и web vitals")
+    Container(app, "Модульный монолит (App Backend)", "Go / OTel SDK", "Трейсы, бизнес-метрики, JSON логи")
+    ContainerDb(db, "PostgreSQL & Redis", "AWS RDS / ElastiCache", "Системные метрики, медленные запросы")
+}
+
+System_Boundary(obs_scope, "Контур наблюдаемости (Observability Platform)") {
+    Container(otel_collector, "OTel Collector / Promtail", "Agent / Daemon", "Сбор, фильтрация и маскирование ПДн")
+    ContainerDb(prometheus, "Prometheus / Mimir", "Time-Series DB", "Хранение 4 Golden Signals метрик")
+    ContainerDb(loki, "Grafana Loki", "Log Aggregator", "Индексация и хранение структурированных логов")
+    ContainerDb(tempo, "Grafana Tempo", "Tracing DB", "Хранение распределенных трасс OTel")
+    Container(grafana, "Grafana Dashboard", "UI / Analytics", "Единые дашборды для SRE, бизнеса и дежурных")
+    Container(alertmgr, "Alertmanager", "Alert Router", "Маршрутизация инцидентов P1/P2")
+}
+
+System_Ext(telegram, "Дежурные инженеры (On-Call)", "Telegram Bot / PagerDuty")
+
+Rel(pwa, otel_collector, "Web Vitals & Client Errors", "HTTPS / OTLP")
+Rel(app, otel_collector, "Метрики, Трейсы и JSON логи", "gRPC / OTLP")
+Rel(db, otel_collector, "RDS & Redis Exporter Metrics", "TCP / Prometheus scrape")
+
+Rel(otel_collector, prometheus, "Экспорт метрик", "Remote Write")
+Rel(otel_collector, loki, "Экспорт логов", "HTTP Push")
+Rel(otel_collector, tempo, "Экспорт спанов", "gRPC")
+
+Rel(grafana, prometheus, "PromQL запросы", "HTTP")
+Rel(grafana, loki, "LogQL запросы", "HTTP")
+Rel(grafana, tempo, "TraceQL запросы", "HTTP")
+
+Rel(prometheus, alertmgr, "Срабатывание порогов (Alerts)", "Internal")
+Rel(alertmgr, telegram, "Эскалация инцидентов P1/P2", "HTTPS / Webhook")
+
+@enduml

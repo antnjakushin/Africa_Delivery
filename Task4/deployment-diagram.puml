@@ -1,0 +1,62 @@
+@startuml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Deployment.puml
+
+title Диаграмма физического развертывания Africa Delivery (AWS Cape Town + Edge PoP)
+
+Deployment_Node(user_dev, "Клиентские устройства", "User Tier") {
+    Deployment_Node(android, "Android Smartphone", "OS 8+") {
+        Container(app_inst, "Africa Delivery PWA", "Service Worker + IndexedDB")
+    }
+}
+
+Deployment_Node(edge_tier, "AWS Global Edge Network", "Edge Tier") {
+    Deployment_Node(pop_lagos, "Edge PoP Lagos / Nairobi", "CloudFront") {
+        Container(edge_cache, "Edge Static Cache & WAF", "Nginx / CloudFront")
+    }
+}
+
+Deployment_Node(aws_region, "AWS Region af-south-1 (Cape Town)", "Cloud Tier") {
+    Deployment_Node(vpc, "Virtual Private Cloud (10.0.0.0/16)", "VPC") {
+        
+        Deployment_Node(pub_subnets, "Public Subnets (3 AZs)", "Public DMZ") {
+            Container(alb_node, "Application Load Balancer", "Multi-AZ ALB")
+            Container(nat_gw, "NAT Gateways", "2 AZ Redundant NAT")
+        }
+        
+        Deployment_Node(priv_app_subnets, "Private App Subnets (3 AZs)", "Compute Layer") {
+            Deployment_Node(ecs_cluster, "ECS Fargate Cluster", "Serverless Containers") {
+                Container(app_task_1, "App Task Replica 1 (AZ-a)", "Docker / Go (2 vCPU, 4GB)")
+                Container(app_task_2, "App Task Replica 2 (AZ-b)", "Docker / Go (2 vCPU, 4GB)")
+                Container(app_task_3, "App Task Replica 3 (AZ-c)", "Docker / Go (2 vCPU, 4GB)")
+            }
+        }
+        
+        Deployment_Node(priv_data_subnets, "Private Data Subnets (3 AZs)", "Data Layer") {
+            ContainerDb(rds_primary, "RDS PostgreSQL Master (AZ-a)", "db.m6g.large (Multi-AZ)")
+            ContainerDb(rds_standby, "RDS PostgreSQL Standby (AZ-b)", "Synchronous Standby")
+            ContainerDb(rds_replica, "RDS Read Replica (AZ-c)", "db.t4g.medium")
+            ContainerDb(redis_cluster, "ElastiCache Redis Cluster", "cache.m6g.large (Multi-AZ)")
+        }
+    }
+}
+
+Deployment_Node(local_ng, "MainOne DC (Lagos, Nigeria)", "Sovereign PII Tier (NDPR)") {
+    Deployment_Node(ng_vps, "Secured VPS Host", "Ubuntu 22.04 LTS / LUKS Encrypted") {
+        ContainerDb(pii_vault_db, "PII Vault Container", "Docker / PostgreSQL (AES-256)")
+    }
+}
+
+Rel(app_inst, pop_lagos, "HTTPS / DNS Route53", "TLS 1.3")
+Rel(pop_lagos, alb_node, "Очищенный трафик (Dynamic API)", "TLS 1.3")
+Rel(alb_node, app_task_1, "Балансировка", "HTTP")
+Rel(alb_node, app_task_2, "Балансировка", "HTTP")
+Rel(alb_node, app_task_3, "Балансировка", "HTTP")
+
+Rel(app_task_1, rds_primary, "Запись / Чтение", "SQL / Port 5432")
+Rel(app_task_1, redis_cluster, "Кэш", "RESP / Port 6379")
+Rel(rds_primary, rds_standby, "Синхронная репликация", "Internal AWS")
+Rel(rds_primary, rds_replica, "Асинхронная репликация", "Internal AWS")
+
+Rel(app_task_1, pii_vault_db, "Детокенизация по требованию", "IPSec VPN / mTLS")
+
+@enduml

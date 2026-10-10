@@ -1,0 +1,50 @@
+@startuml
+left to right direction
+skinparam packageStyle rectangle
+skinparam actorStyle awesome
+
+actor "Покупатель (Buyer)" as Buyer
+actor "Продавец (Seller)" as Seller
+actor "Курьер (Courier)" as Courier
+actor "Финансист / Админ" as Admin
+actor "Платежный шлюз (M-Pesa)" as Gateway
+
+rectangle "Africa Delivery Platform (MVP Use Cases)" {
+    usecase "UC-01: Поиск и просмотр каталога" as UC1
+    usecase "UC-02: Оформление заказа (Checkout)" as UC2
+    usecase "UC-03: Оплата через M-Pesa / Карты" as UC3
+    usecase "UC-04: Оплата наличными (Cash on Delivery)" as UC4
+    usecase "UC-05: Отслеживание доставки" as UC5
+    
+    usecase "UC-06: Управление каталогом и остатками" as UC6
+    usecase "UC-07: Подтверждение и сборка заказа" as UC7
+    usecase "UC-08: Получение выплат за проданный товар" as UC8
+    
+    usecase "UC-09: Прием заказа на доставку" as UC9
+    usecase "UC-10: Фиксация вручения и инкассация COD" as UC10
+    
+    usecase "UC-11: Сверка реестров и финансовые отчеты" as UC11
+    usecase "UC-12: Аудит персональных данных (NDPR)" as UC12
+}
+
+Buyer --> UC1
+Buyer --> UC2
+Buyer --> UC3
+Buyer --> UC4
+Buyer --> UC5
+
+UC2 ..> UC3 : <<include>>
+UC2 ..> UC4 : <<alternative>>
+UC3 --> Gateway : <<external API>>
+
+Seller --> UC6
+Seller --> UC7
+Seller --> UC8
+
+Courier --> UC9
+Courier --> UC10
+
+Admin --> UC11
+Admin --> UC12
+
+@enduml

@@ -1,0 +1,41 @@
+@startuml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Context.puml
+
+LAYOUT_WITH_LEGEND()
+
+title C4 Context: Платформа Africa Delivery (Контекст системы и интеграции)
+
+Person(buyer, "Покупатель (Buyer)", "Пользователи в Нигерии, Кении, ЮАР со смартфонами на Android/iOS")
+Person(seller, "Продавец (Seller / МСБ)", "Мерчанты малого и среднего бизнеса, управляющие товарами и заказами")
+Person(courier, "Курьер (Courier / Boda-boda)", "Водители мотоциклов и партнерских служб доставки")
+Person(executive, "Менеджмент (CEO / CFO / Operations)", "Руководство компании и операционные менеджеры")
+
+System(africa_delivery, "Платформа Africa Delivery", "Модульная e-commerce платформа: витрина, каталог, процессинг заказов, биллинг и логистика")
+
+System_Ext(mpesa, "M-Pesa (Safaricom)", "Платежный шлюз мобильных денег (Кения, Танзания)")
+System_Ext(flutterwave, "Flutterwave", "Основной платежный агрегатор карт и кошельков (Нигерия, ЮАР, Кения)")
+System_Ext(paystack, "Paystack", "Резервный платежный шлюз банковских карт и счетов")
+System_Ext(sendy, "Sendy", "Логистический партнер последней мили и магистральных перевозок (Кения)")
+System_Ext(sendbox, "Sendbox", "Платформа курьерской доставки для e-commerce (Нигерия)")
+System_Ext(whatsapp, "WhatsApp Business API (Meta)", "Канал нотификаций, подтверждения заказов и клиентской поддержки")
+System_Ext(sms_ussd, "SMS/USSD-шлюз (Africa's Talking)", "Провайдер отправки OTP SMS-сообщений и интерактивного USSD-меню для мерчантов")
+System_Ext(regulators, "Органы защиты данных (NDPR / DPA / POPIA)", "Регуляторы персональных данных Нигерии, Кении, ЮАР")
+
+Rel(buyer, africa_delivery, "Просмотр каталога, оформление заказов, онлайн-оплата", "HTTPS / PWA / Android")
+Rel(seller, africa_delivery, "Управление товарами, подтверждение заказов, отчеты", "HTTPS / Web Portal")
+Rel(courier, africa_delivery, "Прием заданий на доставку, отметка вручения, подтверждение COD", "Mobile Web / SMS API")
+Rel(executive, africa_delivery, "Мониторинг P&L, дашборды продаж, операционный контроль", "HTTPS / BI Dashboard")
+
+Rel(africa_delivery, mpesa, "Инициация платежей STK Push, валидация транзакций, B2C выплаты", "REST API / HTTPS")
+Rel(africa_delivery, flutterwave, "Эквайринг карт (Verve/Visa/Mastercard) и мобильных кошельков", "REST API / Webhooks")
+Rel(africa_delivery, paystack, "Резервный эквайринг банковских карт и счетов в Нигерии", "REST API / Webhooks")
+
+Rel(africa_delivery, sendy, "Назначение заданий курьерам и отслеживание статуса доставки в Кении", "REST API / Webhooks")
+Rel(africa_delivery, sendbox, "Маршрутизация и координация заказов последней мили в Нигерии", "REST API / Webhooks")
+
+Rel(africa_delivery, whatsapp, "Сервисные уведомления о статусе заказа и чат-поддержка", "Cloud API / HTTPS")
+Rel(africa_delivery, sms_ussd, "Отправка OTP кодов авторизации, SMS-чеков и USSD-канал для продавцов", "REST API / SMPP")
+
+Rel(africa_delivery, regulators, "Изоляция и аудит персональных данных (NDPR / POPIA compliance)", "Audit Log / Token Vault")
+
+@enduml
